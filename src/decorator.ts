@@ -1,0 +1,658 @@
+import { Range, Selection, TextEditor, TextDocument, TextDocumentChangeEvent } from 'vscode';
+import {
+  HideDecorationType,
+  BoldDecorationType,
+  ItalicDecorationType,
+  BoldItalicDecorationType,
+  StrikethroughDecorationType,
+  CodeDecorationType,
+  HeadingDecorationType,
+  Heading1DecorationType,
+  Heading2DecorationType,
+  Heading3DecorationType,
+  Heading4DecorationType,
+  Heading5DecorationType,
+  Heading6DecorationType,
+  LinkDecorationType,
+  ImageDecorationType,
+} from './decorations';
+import { MarkdownParser, DecorationRange, DecorationType } from './parser';
+
+/**
+ * Cache entry for document decorations.
+ */
+interface CacheEntry {
+  version: number;
+  decorations: DecorationRange[];
+  text: string;
+  lastAccessed: number;
+}
+
+/**
+ * Manages the application of text decorations to markdown documents in VS Code.
+ * 
+ * This class orchestrates the parsing of markdown content and applies visual
+ * decorations (bold, italic, headings, etc.) directly in the editor. It also
+ * handles showing raw markdown syntax when text is selected.
+ * 
+ * @class Decorator
+ * @example
+ * const decorator = new Decorator();
+ * decorator.setActiveEditor(vscode.window.activeTextEditor);
+ * // Decorations are automatically updated when the editor content changes
+ */
+export class Decorator {
+  /** The currently active text editor being decorated */
+  activeEditor: TextEditor | undefined;
+
+  private parser = new MarkdownParser();
+  private updateTimeout: NodeJS.Timeout | undefined;
+  
+  /** Cache for parsed decorations, keyed by document URI */
+  private decorationCache = new Map<string, CacheEntry>();
+  
+  /** Maximum number of documents to cache (LRU eviction) */
+  private readonly maxCacheSize = 10;
+  
+  /** Access counter for LRU eviction */
+  private accessCounter = 0;
+
+  private hideDecorationType = HideDecorationType();
+  private boldDecorationType = BoldDecorationType();
+  private italicDecorationType = ItalicDecorationType();
+  private boldItalicDecorationType = BoldItalicDecorationType();
+  private strikethroughDecorationType = StrikethroughDecorationType();
+  private codeDecorationType = CodeDecorationType();
+  private headingDecorationType = HeadingDecorationType();
+  private heading1DecorationType = Heading1DecorationType();
+  private heading2DecorationType = Heading2DecorationType();
+  private heading3DecorationType = Heading3DecorationType();
+  private heading4DecorationType = Heading4DecorationType();
+  private heading5DecorationType = Heading5DecorationType();
+  private heading6DecorationType = Heading6DecorationType();
+  private linkDecorationType = LinkDecorationType();
+  private imageDecorationType = ImageDecorationType();
+
+  /**
+   * Sets the active text editor and immediately updates decorations.
+   * 
+   * This should be called when switching between editors or when a new
+   * markdown file is opened. The decorations will be applied to the new editor.
+   * 
+   * @param {TextEditor | undefined} textEditor - The text editor to decorate, or undefined to clear
+   * 
+   * @example
+   * decorator.setActiveEditor(vscode.window.activeTextEditor);
+   */
+  setActiveEditor(textEditor: TextEditor | undefined) {
+    // Clear any pending debounced updates
+    if (this.updateTimeout) {
+      clearTimeout(this.updateTimeout);
+      this.updateTimeout = undefined;
+    }
+    
+    if (!textEditor) {
+      return;
+    }
+    this.activeEditor = textEditor;
+    // Update immediately when switching editors (no debounce)
+    this.updateDecorationsForSelection();
+  }
+
+  /**
+   * Updates decorations for selection changes (immediate, no debounce).
+   * 
+   * This method is optimized for selection changes where the document content
+   * hasn't changed. It uses cached decorations and only re-filters based on
+   * the new selection.
+   * 
+   * @example
+   * decorator.updateDecorationsForSelection();
+   */
+  updateDecorationsForSelection() {
+    // Early exit for non-markdown files
+    if (!this.activeEditor || !this.isMarkdownDocument()) {
+      return;
+    }
+
+    // Immediate update without debounce for selection changes
+    this.updateDecorationsInternal();
+  }
+
+  /**
+   * Updates decorations for document changes (debounced).
+   * 
+   * This method handles document content changes and uses debouncing to prevent
+   * excessive parsing during rapid typing.
+   * 
+   * @param {TextDocumentChangeEvent} event - The document change event (optional)
+   * 
+   * @example
+   * decorator.updateDecorationsForDocument(event);
+   */
+  updateDecorationsForDocument(event?: TextDocumentChangeEvent) {
+    // Early exit for non-markdown files
+    if (!this.activeEditor || !this.isMarkdownDocument()) {
+      return;
+    }
+
+    // Invalidate cache on document change
+    if (event) {
+      this.invalidateCache(event.document);
+    }
+
+    // Clear any pending debounced update
+    if (this.updateTimeout) {
+      clearTimeout(this.updateTimeout);
+      this.updateTimeout = undefined;
+    }
+
+    // Debounce document changes
+    this.updateTimeout = setTimeout(() => {
+      this.updateTimeout = undefined;
+      this.updateDecorationsInternal();
+    }, 150);
+  }
+
+  /**
+   * Legacy method for backward compatibility.
+   * Delegates to updateDecorationsForSelection() for immediate updates.
+   * 
+   * @deprecated Use updateDecorationsForSelection() or updateDecorationsForDocument() instead
+   * @param {boolean} immediate - If true, update immediately
+   */
+  updateDecorations(immediate: boolean = false) {
+    if (immediate) {
+      this.updateDecorationsForSelection();
+    } else {
+      this.updateDecorationsForDocument();
+    }
+  }
+
+  /**
+   * Internal method that performs the actual decoration update.
+   * This orchestrates parsing, filtering, and application.
+   */
+  private updateDecorationsInternal() {
+    if (!this.activeEditor) {
+      return;
+    }
+
+    // Early exit for non-markdown files
+    if (!this.isMarkdownDocument()) {
+      return;
+    }
+
+    const document = this.activeEditor.document;
+    
+    // Parse document (uses cache if version unchanged)
+    const decorations = this.parseDocument(document);
+    
+    // Re-validate version before applying (race condition protection)
+    if (this.isDocumentStale(document)) {
+      return; // Document changed during parse, skip this update
+    }
+
+    // Get original document text for offset adjustment (use cached if available for consistency)
+    const cacheKey = document.uri.toString();
+    const cached = this.decorationCache.get(cacheKey);
+    const originalText = cached?.text || document.getText();
+
+    // Filter decorations based on selections (pass original text for offset adjustment)
+    const filtered = this.filterDecorations(decorations, originalText);
+
+    // Apply decorations
+    this.applyDecorations(filtered);
+  }
+
+  /**
+   * Checks if the document is a markdown file.
+   * 
+   * @private
+   * @returns {boolean} True if document is markdown
+   */
+  private isMarkdownDocument(): boolean {
+    if (!this.activeEditor) {
+      return false;
+    }
+    return ['markdown', 'md', 'mdx'].includes(this.activeEditor.document.languageId);
+  }
+
+  /**
+   * Checks if document version has changed since cache was created (stale check).
+   * 
+   * @private
+   * @param {TextDocument} document - The document to check
+   * @returns {boolean} True if document is stale
+   */
+  private isDocumentStale(document: TextDocument): boolean {
+    const cacheKey = document.uri.toString();
+    const cached = this.decorationCache.get(cacheKey);
+    if (!cached) {
+      return false; // No cache, not stale
+    }
+    return cached.version !== document.version;
+  }
+
+  /**
+   * Parses the document and returns decoration ranges.
+   * Uses cache if document version is unchanged.
+   * 
+   * @private
+   * @param {TextDocument} document - The document to parse
+   * @returns {DecorationRange[]} Array of decoration ranges
+   */
+  private parseDocument(document: TextDocument): DecorationRange[] {
+    const cacheKey = document.uri.toString();
+    const cached = this.getCachedDecorations(document);
+    
+    if (cached !== null) {
+      // Update access time for LRU
+      const entry = this.decorationCache.get(cacheKey);
+      if (entry) {
+        entry.lastAccessed = ++this.accessCounter;
+      }
+      return cached;
+    }
+
+    // Parse document
+    const documentText = document.getText();
+    const decorations = this.parser.extractDecorations(documentText);
+
+    // Cache the result
+    this.setCachedDecorations(document, decorations, documentText);
+
+    return decorations;
+  }
+
+  /**
+   * Filters decorations based on current selections and groups by type.
+   * 
+   * @private
+   * @param {DecorationRange[]} decorations - Decorations to filter
+   * @param {string} originalText - Original document text (for offset adjustment)
+   * @returns {Map<DecorationType, Range[]>} Filtered decorations grouped by type
+   */
+  private filterDecorations(decorations: DecorationRange[], originalText: string): Map<DecorationType, Range[]> {
+    if (!this.activeEditor) {
+      return new Map();
+    }
+
+    // Pre-compute selected line ranges for O(1) lookups
+    const selectedLines = new Set<number>();
+    const selectedRanges: Range[] = [];
+    
+    for (const selection of this.activeEditor.selections) {
+      // Add all lines in the selection to the set
+      for (let line = selection.start.line; line <= selection.end.line; line++) {
+        selectedLines.add(line);
+      }
+      // Store non-empty selections for precise range intersection checks
+      if (!selection.isEmpty) {
+        selectedRanges.push(selection);
+      }
+    }
+
+    // Group decorations by type using Map
+    const filtered = new Map<DecorationType, Range[]>();
+
+    for (const decoration of decorations) {
+      const range = this.createRange(decoration.startPos, decoration.endPos, originalText);
+      if (!range) continue;
+
+      // Skip decorations to show raw markdown when:
+      // 1. The decoration range directly intersects with any selection (precise overlap check)
+      // 2. Any line containing the decoration has a selection/cursor (permissive line-based check)
+      // 
+      // Note: The line-based check is intentionally permissive - if you click anywhere on a line
+      // that contains a decoration, the decoration is hidden even if your selection doesn't overlap it.
+      // This provides a better UX when editing markdown.
+      if (this.isRangeSelected(range, selectedRanges) || this.isLineOfRangeSelected(range, selectedLines)) {
+        continue;
+      }
+
+      // Add to appropriate type array
+      const ranges = filtered.get(decoration.type) || [];
+      ranges.push(range);
+      filtered.set(decoration.type, ranges);
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Applies filtered decorations to the editor.
+   * 
+   * @private
+   * @param {Map<DecorationType, Range[]>} filteredDecorations - Decorations grouped by type
+   */
+  private applyDecorations(filteredDecorations: Map<DecorationType, Range[]>) {
+    if (!this.activeEditor) {
+      return;
+    }
+
+    // Apply all decorations by type
+    this.activeEditor.setDecorations(this.hideDecorationType, filteredDecorations.get('hide') || []);
+    this.activeEditor.setDecorations(this.boldDecorationType, filteredDecorations.get('bold') || []);
+    this.activeEditor.setDecorations(this.italicDecorationType, filteredDecorations.get('italic') || []);
+    this.activeEditor.setDecorations(this.boldItalicDecorationType, filteredDecorations.get('boldItalic') || []);
+    this.activeEditor.setDecorations(this.strikethroughDecorationType, filteredDecorations.get('strikethrough') || []);
+    this.activeEditor.setDecorations(this.codeDecorationType, filteredDecorations.get('code') || []);
+    this.activeEditor.setDecorations(this.headingDecorationType, filteredDecorations.get('heading') || []);
+    this.activeEditor.setDecorations(this.heading1DecorationType, filteredDecorations.get('heading1') || []);
+    this.activeEditor.setDecorations(this.heading2DecorationType, filteredDecorations.get('heading2') || []);
+    this.activeEditor.setDecorations(this.heading3DecorationType, filteredDecorations.get('heading3') || []);
+    this.activeEditor.setDecorations(this.heading4DecorationType, filteredDecorations.get('heading4') || []);
+    this.activeEditor.setDecorations(this.heading5DecorationType, filteredDecorations.get('heading5') || []);
+    this.activeEditor.setDecorations(this.heading6DecorationType, filteredDecorations.get('heading6') || []);
+    this.activeEditor.setDecorations(this.linkDecorationType, filteredDecorations.get('link') || []);
+    this.activeEditor.setDecorations(this.imageDecorationType, filteredDecorations.get('image') || []);
+  }
+
+  /**
+   * Gets cached decorations for a document if version matches.
+   * 
+   * @private
+   * @param {TextDocument} document - The document to get cache for
+   * @returns {DecorationRange[] | null} Cached decorations or null if cache miss/version mismatch
+   */
+  private getCachedDecorations(document: TextDocument): DecorationRange[] | null {
+    const cacheKey = document.uri.toString();
+    const cached = this.decorationCache.get(cacheKey);
+    
+    if (!cached) {
+      return null;
+    }
+
+    // Check version match
+    if (cached.version !== document.version) {
+      return null;
+    }
+
+    return cached.decorations;
+  }
+
+  /**
+   * Sets cached decorations for a document.
+   * Implements LRU eviction if cache is full.
+   * 
+   * @private
+   * @param {TextDocument} document - The document to cache
+   * @param {DecorationRange[]} decorations - Decorations to cache
+   * @param {string} text - Document text to cache
+   */
+  private setCachedDecorations(document: TextDocument, decorations: DecorationRange[], text: string): void {
+    const cacheKey = document.uri.toString();
+    
+    // Evict least recently used if cache is full
+    if (this.decorationCache.size >= this.maxCacheSize && !this.decorationCache.has(cacheKey)) {
+      this.evictLRU();
+    }
+
+    this.decorationCache.set(cacheKey, {
+      version: document.version,
+      decorations,
+      text,
+      lastAccessed: ++this.accessCounter,
+    });
+  }
+
+  /**
+   * Evicts the least recently used cache entry.
+   * 
+   * @private
+   */
+  private evictLRU(): void {
+    let lruKey: string | undefined;
+    let lruAccess = Infinity;
+
+    for (const [key, entry] of this.decorationCache.entries()) {
+      if (entry.lastAccessed < lruAccess) {
+        lruAccess = entry.lastAccessed;
+        lruKey = key;
+      }
+    }
+
+    if (lruKey) {
+      this.decorationCache.delete(lruKey);
+    }
+  }
+
+  /**
+   * Invalidates cache for a document.
+   * 
+   * @private
+   * @param {TextDocument} document - The document to invalidate
+   */
+  private invalidateCache(document: TextDocument): void {
+    const cacheKey = document.uri.toString();
+    this.decorationCache.delete(cacheKey);
+  }
+
+  /**
+   * Clears cache for a specific document or all documents.
+   * 
+   * @param {string} documentUri - Optional document URI to clear, or undefined to clear all
+   */
+  clearCache(documentUri?: string): void {
+    if (documentUri) {
+      this.decorationCache.delete(documentUri);
+    } else {
+      this.decorationCache.clear();
+    }
+  }
+
+  /**
+   * Handles document change events with change tracking.
+   * 
+   * @param {TextDocumentChangeEvent} event - The document change event
+   */
+  updateDecorationsFromChange(event: TextDocumentChangeEvent): void {
+    // Calculate change size for future incremental parsing support
+    const changeSize = this.calculateChangeSize(event);
+    
+    // For now, always invalidate cache and do full parse
+    // Future: could use changeSize to determine if incremental parsing is feasible
+    this.invalidateCache(event.document);
+    
+    // Update decorations with debounce
+    this.updateDecorationsForDocument(event);
+  }
+
+  /**
+   * Calculates the percentage of document changed.
+   * 
+   * @private
+   * @param {TextDocumentChangeEvent} event - The document change event
+   * @returns {number} Percentage of document changed (0-100)
+   */
+  private calculateChangeSize(event: TextDocumentChangeEvent): number {
+    const document = event.document;
+    const totalLength = document.getText().length;
+    
+    if (totalLength === 0) {
+      return 0;
+    }
+
+    let changedLength = 0;
+    for (const change of event.contentChanges) {
+      const deletedLength = change.rangeLength;
+      const insertedLength = change.text.length;
+      changedLength += Math.max(deletedLength, insertedLength);
+    }
+
+    return (changedLength / totalLength) * 100;
+  }
+
+  /**
+   * Gets changed ranges from a document change event.
+   * 
+   * @private
+   * @param {TextDocumentChangeEvent} event - The document change event
+   * @returns {Range[]} Array of changed ranges
+   */
+  private getChangedRanges(event: TextDocumentChangeEvent): Range[] {
+    const ranges: Range[] = [];
+    for (const change of event.contentChanges) {
+      ranges.push(change.range);
+    }
+    return ranges;
+  }
+
+  /**
+   * Dispose of resources and clear any pending updates.
+   */
+  dispose() {
+    if (this.updateTimeout) {
+      clearTimeout(this.updateTimeout);
+      this.updateTimeout = undefined;
+    }
+    this.decorationCache.clear();
+  }
+
+  /**
+   * Maps a position from normalized text (LF only) to original document text.
+   * This accounts for CRLF -> LF normalization done by the parser.
+   * 
+   * @private
+   * @param {number} normalizedPos - Position in normalized text
+   * @param {string} originalText - Original document text
+   * @returns {number} Position in original document text
+   */
+  private mapNormalizedToOriginal(normalizedPos: number, originalText?: string): number {
+    if (!originalText) {
+      return normalizedPos;
+    }
+
+    // If no CRLF, positions match exactly
+    if (!originalText.includes('\r\n')) {
+      return normalizedPos;
+    }
+
+    // Build a direct character-by-character mapping
+    // Walk through original text character by character, tracking normalized index
+    // When normalized index reaches target, return the corresponding original position
+    // 
+    // Key insight: For exclusive end positions, when normalized position points to '\n',
+    // we want to map to the '\r' position (not '\n') so that the content range excludes '\r'
+    // This ensures [start:end) in normalized maps to [start:end) in original with same content
+    let normalizedIndex = 0;
+    
+    for (let i = 0; i < originalText.length; i++) {
+      // Check for CRLF first
+      if (originalText[i] === '\r' && i + 1 < originalText.length && originalText[i + 1] === '\n') {
+        // CRLF: '\r' is skipped in normalized, '\n' maps to normalized position
+        // If target is at the normalized '\n' position, return '\r' position (i)
+        // This ensures exclusive end positions work correctly
+        if (normalizedIndex === normalizedPos) {
+          // Target points to '\n' in normalized, map to '\r' in original
+          return i;
+        }
+        // Advance normalized index by 1 (for the single '\n' in normalized)
+        normalizedIndex++;
+        i++; // Skip the '\n' in original
+        // Check if we've reached target after processing CRLF
+        if (normalizedIndex === normalizedPos) {
+          // This shouldn't happen (we checked before), but handle it
+          return i;
+        }
+      } else {
+        // Regular character: check if this is our target before incrementing
+        if (normalizedIndex === normalizedPos) {
+          return i;
+        }
+        normalizedIndex++;
+      }
+    }
+    
+    // If we didn't find it (shouldn't happen), return the last position
+    return originalText.length;
+  }
+
+  /**
+   * Convert character positions to VS Code Range.
+   * 
+   * Note: The parser normalizes line endings (CRLF -> LF) before parsing.
+   * Remark's positions are based on normalized text. VS Code's positionAt()
+   * uses the actual document text. We need to map normalized positions to
+   * actual document positions.
+   * 
+   * @private
+   * @param {number} startPos - Start position in normalized text
+   * @param {number} endPos - End position in normalized text
+   * @param {string} originalText - Original document text (for offset mapping)
+   * @returns {Range | null} VS Code Range or null if invalid
+   */
+  private createRange(startPos: number, endPos: number, originalText?: string): Range | null {
+    if (!this.activeEditor) return null;
+
+    try {
+      // Map normalized positions to original document positions
+      const mappedStart = this.mapNormalizedToOriginal(startPos, originalText);
+      const mappedEnd = this.mapNormalizedToOriginal(endPos, originalText);
+      
+      const start = this.activeEditor.document.positionAt(mappedStart);
+      const end = this.activeEditor.document.positionAt(mappedEnd);
+      return new Range(start, end);
+    } catch (error) {
+      // Invalid position
+      return null;
+    }
+  }
+
+  /**
+   * Check if a decoration range intersects with any selection
+   * Returns true if the decoration range overlaps with any selection range
+   * 
+   * Edge cases handled:
+   * - Empty selections (cursor): only hides if cursor is within the decoration range
+   * - Multiple selections: checks all selections
+   * - Partial overlaps: any intersection hides the decoration
+   * - Touching ranges: considered as overlapping
+   * 
+   * @param {Range} range - The decoration range to check
+   * @param {Range[]} selectedRanges - Pre-computed non-empty selection ranges
+   */
+  private isRangeSelected(range: Range, selectedRanges: Range[]): boolean {
+    if (!this.activeEditor) return false;
+    
+    // Check empty selections (cursors) - these need to be checked against the current editor state
+    for (const selection of this.activeEditor.selections) {
+      if (selection.isEmpty && range.contains(selection.start)) {
+        return true;
+      }
+    }
+    
+    // Check non-empty selections using pre-computed ranges
+    return selectedRanges.some((selection) => {
+      // intersection() returns undefined if ranges don't overlap, or a Range if they do
+      // If intersection exists (even if empty/touching), the ranges overlap
+      const intersection = range.intersection(selection);
+      return intersection !== undefined;
+    });
+  }
+
+  /**
+   * Check if any line containing the decoration has a selection or cursor
+   * This hides decorations when the user clicks anywhere on a line (even without selecting)
+   * to show raw markdown syntax for the entire line
+   * 
+   * This is more permissive than isRangeSelected - it hides decorations on any line
+   * that has any selection/cursor, even if the selection doesn't overlap the decoration
+   * 
+   * @param {Range} range - The decoration range to check
+   * @param {Set<number>} selectedLines - Pre-computed set of selected line numbers
+   */
+  private isLineOfRangeSelected(range: Range, selectedLines: Set<number>): boolean {
+    if (!this.activeEditor || selectedLines.size === 0) return false;
+    
+    // Check if any line in the decoration range is in the selected lines set
+    for (let line = range.start.line; line <= range.end.line; line++) {
+      if (selectedLines.has(line)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+}
