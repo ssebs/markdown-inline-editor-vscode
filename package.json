@@ -1,7 +1,7 @@
 {
   "name": "markdown-inline-editor-vscode",
   "displayName": "Markdown Inline Editor",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "WYSIWYG inline markdown editor - hide syntax, focus on content",
   "license": "MIT",
   "author": "SeardnaSchmid",
@@ -66,7 +66,7 @@
     "package": "vsce package --out dist/extension.vsix",
     "build": "npm run compile && npm run package",
     "prepublishOnly": "npm run clean && npm run build",
-    "deploy:prod": "npm run clean && npm run build && vsce publish --packagePath dist/extension.vsix --pat $AZURE_DEVOPS_TOKEN"
+    "deploy:prod": "npm run clean && npm run build && vsce publish --packagePath dist/extension.vsix --pat $AZURE_DEVOPS_TOKEN && ovsx publish dist/extension.vsix --pat $OPEN_VSX_TOKEN"
   },
   "dependencies": {
     "remark-gfm": "^4.0.1",
@@ -86,6 +86,7 @@
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "jest-html-reporters": "^3.1.7",
+    "ovsx": "^0.9.0",
     "rimraf": "^5.0.5",
     "ts-jest": "^29.1.2",
     "typescript": "^5.4.4"
