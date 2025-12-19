@@ -1,4 +1,4 @@
-import type { Root, Node, Strong, Emphasis, Heading, InlineCode, Code, Link, Image, Delete, Blockquote } from 'mdast';
+import type { Root, Node, Strong, Emphasis, Heading, InlineCode, Code, Link, Image, Delete, Blockquote, List, ListItem, ThematicBreak } from 'mdast';
 import { getRemarkProcessorSync, getRemarkProcessor } from './parser-remark';
 
 /**
@@ -36,7 +36,10 @@ export type DecorationType =
   | 'heading6'
   | 'link'
   | 'image'
-  | 'blockquote';
+  | 'blockquote'
+  | 'blockquoteContent'
+  | 'listItem'
+  | 'horizontalRule';
 
 /**
  * Parser for extracting decoration ranges from markdown text.
@@ -191,6 +194,14 @@ export class MarkdownParser {
 
         case 'blockquote':
           this.processBlockquote(node as Blockquote, text, decorations, processedBlockquotePositions);
+          break;
+
+        case 'listItem':
+          this.processListItem(node as ListItem, text, decorations);
+          break;
+
+        case 'thematicBreak':
+          this.processThematicBreak(node as ThematicBreak, text, decorations);
           break;
       }
     });
@@ -718,6 +729,13 @@ export class MarkdownParser {
     const start = node.position.start.offset;
     const end = node.position.end.offset;
 
+    // Apply text color to the entire blockquote content
+    decorations.push({
+      startPos: start,
+      endPos: end,
+      type: 'blockquoteContent',
+    });
+
     // Find all '>' markers at the start of lines within this blockquote
     // Blockquotes can span multiple lines, each starting with '>'
     let pos = start;
@@ -769,6 +787,70 @@ export class MarkdownParser {
       if (nextLine === -1 || nextLine >= end) break;
       pos = nextLine + 1;
     }
+  }
+
+  /**
+   * Processes a list item node.
+   * 
+   * Replaces list markers (-, *, +) with a bullet point (•).
+   */
+  private processListItem(
+    node: ListItem,
+    text: string,
+    decorations: DecorationRange[]
+  ): void {
+    if (!node.position || node.position.start.offset === undefined || node.position.end.offset === undefined) return;
+
+    const start = node.position.start.offset;
+    const end = node.position.end.offset;
+
+    // Find the list marker at the start of the list item
+    // Common markers: -, *, +
+    let markerEnd = start;
+    while (markerEnd < end && /[\s\-*+]/.test(text[markerEnd])) {
+      if (text[markerEnd] === '-' || text[markerEnd] === '*' || text[markerEnd] === '+') {
+        // Found the marker, now find where it ends (including following space)
+        const markerStart = markerEnd;
+        markerEnd++;
+        
+        // Check if there's a space after the marker
+        if (markerEnd < end && text[markerEnd] === ' ') {
+          markerEnd++;
+        }
+        
+        // Replace the marker (and space) with a bullet decoration
+        decorations.push({
+          startPos: markerStart,
+          endPos: markerEnd,
+          type: 'listItem',
+        });
+        break;
+      }
+      markerEnd++;
+    }
+  }
+
+  /**
+   * Processes a thematic break (horizontal rule) node.
+   * 
+   * Replaces the text (---, ***, ___) with a visual horizontal line.
+   */
+  private processThematicBreak(
+    node: ThematicBreak,
+    text: string,
+    decorations: DecorationRange[]
+  ): void {
+    if (!node.position || node.position.start.offset === undefined || node.position.end.offset === undefined) return;
+
+    const start = node.position.start.offset;
+    const end = node.position.end.offset;
+
+    // Replace the entire horizontal rule text with a decoration
+    decorations.push({
+      startPos: start,
+      endPos: end,
+      type: 'horizontalRule',
+    });
   }
 
   /**

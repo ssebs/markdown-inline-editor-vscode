@@ -16,6 +16,9 @@ import {
   LinkDecorationType,
   ImageDecorationType,
   BlockquoteDecorationType,
+  BlockquoteContentDecorationType,
+  ListItemDecorationType,
+  HorizontalRuleDecorationType,
 } from './decorations';
 import { MarkdownParser, DecorationRange, DecorationType } from './parser';
 
@@ -74,6 +77,9 @@ export class Decorator {
   private linkDecorationType = LinkDecorationType();
   private imageDecorationType = ImageDecorationType();
   private blockquoteDecorationType = BlockquoteDecorationType();
+  private blockquoteContentDecorationType = BlockquoteContentDecorationType();
+  private listItemDecorationType = ListItemDecorationType();
+  private horizontalRuleDecorationType = HorizontalRuleDecorationType();
 
   /**
    * Sets the active text editor and immediately updates decorations.
@@ -350,6 +356,9 @@ export class Decorator {
     this.activeEditor.setDecorations(this.linkDecorationType, filteredDecorations.get('link') || []);
     this.activeEditor.setDecorations(this.imageDecorationType, filteredDecorations.get('image') || []);
     this.activeEditor.setDecorations(this.blockquoteDecorationType, filteredDecorations.get('blockquote') || []);
+    this.activeEditor.setDecorations(this.blockquoteContentDecorationType, filteredDecorations.get('blockquoteContent') || []);
+    this.activeEditor.setDecorations(this.listItemDecorationType, filteredDecorations.get('listItem') || []);
+    this.activeEditor.setDecorations(this.horizontalRuleDecorationType, filteredDecorations.get('horizontalRule') || []);
   }
 
   /**

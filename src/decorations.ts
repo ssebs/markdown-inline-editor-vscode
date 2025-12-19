@@ -1,10 +1,7 @@
-import { ThemeColor, window } from 'vscode';
+import { window, ThemeColor } from 'vscode';
 
 /**
- * Creates a decoration type for hiding markdown syntax markers.
- * 
- * This decoration type is used to hide markdown syntax characters like
- * `#`, `**`, `*`, `~~`, `` ` ``, etc. so they don't appear in the editor.
+ * Creates a decoration type for hiding markdown syntax.
  * 
  * @returns {vscode.TextEditorDecorationType} A decoration type that hides text
  */
@@ -22,7 +19,7 @@ export function HideDecorationType() {
 /**
  * Creates a decoration type for bold text styling.
  * 
- * @returns {vscode.TextEditorDecorationType} A decoration type that applies bold font weight
+ * @returns {vscode.TextEditorDecorationType} A decoration type for bold text
  */
 export function BoldDecorationType() {
   return window.createTextEditorDecorationType({
@@ -33,7 +30,7 @@ export function BoldDecorationType() {
 /**
  * Creates a decoration type for italic text styling.
  * 
- * @returns {vscode.TextEditorDecorationType} A decoration type that applies italic font style
+ * @returns {vscode.TextEditorDecorationType} A decoration type for italic text
  */
 export function ItalicDecorationType() {
   return window.createTextEditorDecorationType({
@@ -42,9 +39,9 @@ export function ItalicDecorationType() {
 }
 
 /**
- * Creates a decoration type for bold and italic text styling.
+ * Creates a decoration type for bold+italic text styling.
  * 
- * @returns {vscode.TextEditorDecorationType} A decoration type that applies both bold and italic styling
+ * @returns {vscode.TextEditorDecorationType} A decoration type for bold+italic text
  */
 export function BoldItalicDecorationType() {
   return window.createTextEditorDecorationType({
@@ -56,7 +53,7 @@ export function BoldItalicDecorationType() {
 /**
  * Creates a decoration type for strikethrough text styling.
  * 
- * @returns {vscode.TextEditorDecorationType} A decoration type that applies strikethrough text decoration
+ * @returns {vscode.TextEditorDecorationType} A decoration type for strikethrough text
  */
 export function StrikethroughDecorationType() {
   return window.createTextEditorDecorationType({
@@ -67,41 +64,30 @@ export function StrikethroughDecorationType() {
 /**
  * Creates a decoration type for inline code styling.
  * 
- * Applies a background color, border, and border radius to make code
- * stand out from regular text.
- * 
- * @returns {vscode.TextEditorDecorationType} A decoration type that styles code with background and border
+ * @returns {vscode.TextEditorDecorationType} A decoration type for inline code
  */
 export function CodeDecorationType() {
   return window.createTextEditorDecorationType({
-    backgroundColor: new ThemeColor('editor.background'),
-    border: '1px solid',
-    borderColor: new ThemeColor('editorWidget.border'),
+    backgroundColor: new ThemeColor('textCodeBlock.background'),
     borderRadius: '3px',
   });
 }
 
 /**
- * Creates a decoration type for generic heading styling (levels 4-6).
+ * Creates a decoration type for heading styling.
  * 
- * Uses bold font weight with foreground color. This is the default
- * styling for headings that don't have specific level styling.
- * 
- * @returns {vscode.TextEditorDecorationType} A decoration type for generic headings
+ * @returns {vscode.TextEditorDecorationType} A decoration type for headings
  */
 export function HeadingDecorationType() {
   return window.createTextEditorDecorationType({
-    color: new ThemeColor('foreground'),
     fontWeight: 'bold',
   });
 }
 
 /**
- * Creates a decoration type for level 1 heading styling.
+ * Creates a decoration type for heading 1 styling.
  * 
- * Applies large font size (200%) and bold weight to make H1 headings prominent.
- * 
- * @returns {vscode.TextEditorDecorationType} A decoration type for H1 headings
+ * @returns {vscode.TextEditorDecorationType} A decoration type for heading 1
  */
 export function Heading1DecorationType() {
   return window.createTextEditorDecorationType({
@@ -111,11 +97,9 @@ export function Heading1DecorationType() {
 }
 
 /**
- * Creates a decoration type for level 2 heading styling.
+ * Creates a decoration type for heading 2 styling.
  * 
- * Applies large font size (150%) and bold weight for H2 headings.
- * 
- * @returns {vscode.TextEditorDecorationType} A decoration type for H2 headings
+ * @returns {vscode.TextEditorDecorationType} A decoration type for heading 2
  */
 export function Heading2DecorationType() {
   return window.createTextEditorDecorationType({
@@ -125,11 +109,9 @@ export function Heading2DecorationType() {
 }
 
 /**
- * Creates a decoration type for level 3 heading styling.
+ * Creates a decoration type for heading 3 styling.
  * 
- * Applies slightly larger font size (110%) and bold weight for H3 headings.
- * 
- * @returns {vscode.TextEditorDecorationType} A decoration type for H3 headings
+ * @returns {vscode.TextEditorDecorationType} A decoration type for heading 3
  */
 export function Heading3DecorationType() {
   return window.createTextEditorDecorationType({
@@ -139,11 +121,9 @@ export function Heading3DecorationType() {
 }
 
 /**
- * Creates a decoration type for level 4 heading styling.
+ * Creates a decoration type for heading 4 styling.
  * 
- * Uses normal font size (100%) with description foreground color for H4 headings.
- * 
- * @returns {vscode.TextEditorDecorationType} A decoration type for H4 headings
+ * @returns {vscode.TextEditorDecorationType} A decoration type for heading 4
  */
 export function Heading4DecorationType() {
   return window.createTextEditorDecorationType({
@@ -153,11 +133,9 @@ export function Heading4DecorationType() {
 }
 
 /**
- * Creates a decoration type for level 5 heading styling.
+ * Creates a decoration type for heading 5 styling.
  * 
- * Uses smaller font size (90%) with description foreground color for H5 headings.
- * 
- * @returns {vscode.TextEditorDecorationType} A decoration type for H5 headings
+ * @returns {vscode.TextEditorDecorationType} A decoration type for heading 5
  */
 export function Heading5DecorationType() {
   return window.createTextEditorDecorationType({
@@ -167,11 +145,9 @@ export function Heading5DecorationType() {
 }
 
 /**
- * Creates a decoration type for level 6 heading styling.
+ * Creates a decoration type for heading 6 styling.
  * 
- * Uses smallest font size (80%) with description foreground color for H6 headings.
- * 
- * @returns {vscode.TextEditorDecorationType} A decoration type for H6 headings
+ * @returns {vscode.TextEditorDecorationType} A decoration type for heading 6
  */
 export function Heading6DecorationType() {
   return window.createTextEditorDecorationType({
@@ -183,9 +159,7 @@ export function Heading6DecorationType() {
 /**
  * Creates a decoration type for link styling.
  * 
- * Applies link foreground color and underline to make links visually distinct.
- * 
- * @returns {vscode.TextEditorDecorationType} A decoration type for markdown links
+ * @returns {vscode.TextEditorDecorationType} A decoration type for links
  */
 export function LinkDecorationType() {
   return window.createTextEditorDecorationType({
@@ -195,26 +169,23 @@ export function LinkDecorationType() {
 }
 
 /**
- * Creates a decoration type for image alt text styling.
+ * Creates a decoration type for image styling.
  * 
- * Applies link foreground color and italic style to image alt text.
- * 
- * @returns {vscode.TextEditorDecorationType} A decoration type for image alt text
+ * @returns {vscode.TextEditorDecorationType} A decoration type for images
  */
 export function ImageDecorationType() {
   return window.createTextEditorDecorationType({
     color: new ThemeColor('textLink.foreground'),
-    fontStyle: 'italic',
   });
 }
 
 /**
- * Creates a decoration type for blockquote styling.
+ * Creates a decoration type for blockquote marker styling.
  * 
  * Replaces '>' characters with a vertical blue bar.
  * Nested blockquotes automatically show multiple bars (one per '>').
  * 
- * @returns {vscode.TextEditorDecorationType} A decoration type for blockquotes
+ * @returns {vscode.TextEditorDecorationType} A decoration type for blockquote markers
  */
 export function BlockquoteDecorationType() {
   // Hide the '>' character and replace it with a vertical bar
@@ -225,5 +196,54 @@ export function BlockquoteDecorationType() {
       color: new ThemeColor('textLink.foreground'),
       fontWeight: 'bold',
     },
+  });
+}
+
+/**
+ * Creates a decoration type for blockquote content styling.
+ * 
+ * Uses regular text color for readability.
+ * 
+ * @returns {vscode.TextEditorDecorationType} A decoration type for blockquote content
+ */
+export function BlockquoteContentDecorationType() {
+  return window.createTextEditorDecorationType({
+    // No color specified - uses regular text color for readability
+  });
+}
+
+/**
+ * Creates a decoration type for list item styling.
+ * 
+ * Replaces list markers (-, *, +) with a bullet point (•).
+ * 
+ * @returns {vscode.TextEditorDecorationType} A decoration type for list items
+ */
+export function ListItemDecorationType() {
+  // Hide the list marker and replace it with a bullet point
+  return window.createTextEditorDecorationType({
+    textDecoration: 'none; display: none;', // Properly hide the original marker
+    before: {
+      contentText: '• ',
+      // No color specified - uses regular text color
+    },
+  });
+}
+
+/**
+ * Creates a decoration type for horizontal rules (thematic breaks).
+ * 
+ * Replaces ---, ***, or ___ with a visual horizontal line that spans the full editor width.
+ * 
+ * @returns {vscode.TextEditorDecorationType} A decoration type for horizontal rules
+ */
+export function HorizontalRuleDecorationType() {
+  return window.createTextEditorDecorationType({
+    textDecoration: 'none; display: none;', // Hide the original text
+    after: {
+      contentText: '─'.repeat(200), // Very long horizontal line
+      color: new ThemeColor('editorWidget.border'),
+    },
+    isWholeLine: true,
   });
 }
