@@ -1,136 +1,167 @@
-# Markdown Inline Editor
+# Markdown Inline Editor [![CI/CD Status][ci-img]][ci] [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
 
-A WYSIWYG-style VS Code extension that hides Markdown syntax and displays formatted content inline as you type. Write Markdown with the ease of a rich text editor while maintaining 100% standard Markdown files.
+<img src="images/icon.png" align="right" alt="Extension Icon" width="120" height="120">
 
-![Extension Icon](images/icon.png)
+Write Markdown like a rich text editor—see **bold**, *italic*, and `code` styled inline while syntax markers stay hidden. Click to edit raw Markdown. Your files stay 100% standard `.md`.
 
-## ✨ Features
+**Why?** Less clutter, more focus. Git-friendly. Works everywhere.
 
-### Hide Syntax Markers
-- **Bold** and *italic* text without visible `**` or `*` markers
-- ~~Strikethrough~~ without `~~`
-- `Inline code` without backticks
-- Links appear styled with URLs hidden
-- Images show alt text styled, URLs hidden
-- Headings with automatic sizing (H1-H6)
+### Key Features
 
-### Rich Formatting
-- **Lists**: Unordered lists with bullet points (•) instead of `-`, `*`, `+`
-- **Blockquotes**: Vertical bars (│) instead of `>`
-- **Horizontal Rules**: Full-width lines instead of `---`
-- **Code Blocks**: Syntax highlighted with fenced markers hidden
-- **Nested Formatting**: Support for ***bold italic*** and nested blockquotes
+* **Hide syntax** – No more `**`, `~~`, backticks cluttering your view
+* **Smart reveal** – Click any text to instantly see/edit raw Markdown  
+* **Fast** – Intelligent caching, no lag
+* **Compatible** – Standard `.md` files, works with any tool
+* **Theme-aware** – Adapts to your VS Code theme
 
-### Smart Editing
-- **Toggle on/off**: Click the eye icon in the editor toolbar to show/hide formatting
-- **Selection reveals syntax**: Click or select text to see the raw Markdown
-- **Clickable links**: Internal document links are clickable
-- **Real-time updates**: Formatting updates as you type with intelligent caching
-- **Pure Markdown**: Your files remain standard `.md` format
+## Demo
 
-## 📦 Installation
+<p align="center">
+  <video src="images/example-video.webm" controls width="80%">
+    Sorry, your browser doesn't support embedded videos.
+  </video>
+</p>
 
-### From VS Code Marketplace
-1. Open VS Code
-2. Press `Ctrl+P` / `Cmd+P`
-3. Type `ext install CodeSmith.markdown-inline-editor-vscode`
-4. Press Enter
+<p align="center">
+  <img src="images/example-ui.png" alt="Markdown Inline Editor - formatted view" width="49%">
+  <img src="images/example-ui-selected-line.png" alt="Raw Markdown revealed on selection" width="49%">
+</p>
 
-### From Source
+## What You Get
+
+- **Hidden syntax** – `**bold**`, `*italic*`, `~~strike~~` → see the formatting, not the markers
+- **Styled headings** – `# H1` through `###### H6` sized appropriately  
+- **Clean links** – `[text](url)` → clickable text, URL hidden
+- **Visual lists** – `- item` → • item
+- **Code blocks** – Fences hidden, background styled
+- **Instant reveal** – Select text to see/edit raw Markdown
+- **Fast** – Caching + incremental updates
+- **Toggle anytime** – 👁️ toolbar button
+
+## Recommended additional Extensions
+
+Enhance your Markdown workflow with these complementary extensions:
+
+- **[Markdown All in One](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one)**
+    - Keyboard shortcuts (e.g., <kbd>Alt</kbd>+<kbd>C</kbd> to toggle checkboxes)
+    - Auto-formatting
+    - Table of contents generator
+    - Markdown preview
+    - Many more productivity features
+
+- **[Mermaid Chart](https://marketplace.visualstudio.com/items?itemName=MermaidChart.vscode-mermaid-chart)**
+    - Create and edit diagrams directly within Markdown
+    - Preview and quickly iterate on charts
+    - Great for including diagram context for AI/colleagues
+
+
+## Install
+
+**VS Code Marketplace:**
+1. Extensions → Search "Markdown Inline Editor" → Install
+
+**Quick Open:**  
+Press `Ctrl+P` / `Cmd+P`, type `ext install CodeSmith.markdown-inline-editor-vscode`
+
+## Usage
+
+1. Open any `.md` file
+2. Start typing—formatting is automatic
+3. Click/select text to reveal raw Markdown
+4. Use 👁️ toolbar icon to toggle decorations on/off
+
+## Supported Markdown
+
+| Syntax | Example | Result |
+|--------|---------|--------|
+| Bold | `**text**` | **text** (markers hidden) |
+| Italic | `*text*` | *text* (markers hidden) |
+| Strikethrough | `~~text~~` | ~~text~~ (markers hidden) |
+| Code | `` `code` `` | `code` (monospace) |
+| Headings | `# H1` ... `###### H6` | Sized text |
+| Links | `[text](url)` | Clickable, URL hidden |
+| Images | `![alt](img.png)` | Alt text styled |
+| Lists | `- item` | • item |
+| Task Lists | `- [ ]` / `- [x]` | ☐ / ☑ |
+| Blockquotes | `> quote` | │ quote |
+| Horizontal Rules | `---` | ─────── |
+| Code Blocks | ` ```lang ` | Background styled, fences hidden |
+
+Nested formatting fully supported (e.g., **bold *italic***).
+
+## Configuration
+
+No setup needed—works out of the box. Auto-adapts to your VS Code theme.
+
+## Development
+
+**Prerequisites:** Node.js 20+, VS Code 1.88.0+
+
 ```bash
 git clone https://github.com/SeardnaSchmid/markdown-inline-editor-vscode.git
 cd markdown-inline-editor-vscode
 npm install
-npm run build
+npm run compile
+npm test
 ```
 
-Then install the `.vsix` file from the `dist/` folder.
+**Key Commands:**
+- `npm run compile` – Build
+- `npm test` – Run tests
+- `npm run package` – Create `.vsix`
 
-## 🚀 Usage
-
-1. **Open any Markdown file** (`.md`, `.markdown`, `.mdx`)
-2. **Start typing** - formatting is applied automatically
-3. **Toggle decorations** - Click the eye icon (👁️) in the editor toolbar
-4. **Edit normally** - Select text to see/edit the raw Markdown syntax
-
-### Supported Markdown Elements
-
-| Element | Syntax | Displayed As |
-|---------|--------|--------------|
-| **Bold** | `**text**` or `__text__` | **text** |
-| *Italic* | `*text*` or `_text_` | *text* |
-| ***Bold Italic*** | `***text***` | ***text*** |
-| ~~Strikethrough~~ | `~~text~~` | ~~text~~ |
-| `Inline Code` | `` `code` `` | `code` |
-| Headings | `# H1` to `###### H6` | Sized & styled |
-| [Links](#) | `[text](url)` | Styled link (URL hidden) |
-| ![Images](url) | `![alt](url)` | Styled alt text |
-| Lists | `- item` or `* item` | • item |
-| Blockquotes | `> quote` | │ quote |
-| Horizontal Rule | `---` or `***` | ────────── |
-| Code Blocks | ` ```lang ` | Background highlighted |
-
-## ⚙️ Configuration
-
-Currently, the extension works out-of-the-box with no configuration needed. Styling adapts to your VS Code theme automatically.
-
-## 🛠️ Development
-
-### Prerequisites
-- Node.js 20+
-- VS Code 1.88.0+
-
-### Setup
-```bash
-npm install          # Install dependencies
-npm run compile      # Compile TypeScript
-npm test             # Run tests (123 tests)
-npm run package      # Build .vsix extension
-```
-
-### Project Structure
+**Architecture:**
 ```
 src/
-├── extension.ts        # Extension entry point
-├── parser.ts           # Markdown AST parser (using remark)
-├── decorator.ts        # Decoration application & caching
-├── decorations.ts      # VS Code decoration type definitions
-├── link-provider.ts    # Clickable link support
-└── parser/__tests__/   # Comprehensive test suite
+├── extension.ts      # Entry point
+├── parser.ts         # Markdown AST (remark-based)
+├── decorator.ts      # Decorations & caching
+├── decorations.ts    # VS Code decoration types
+└── parser/__tests__/ # 100+ test cases
 ```
 
-### Architecture
-- **Parser**: Uses `remark` to parse Markdown into an AST
-- **Decorator**: Applies VS Code text decorations based on parsed ranges
-- **Caching**: LRU cache for parsed decorations (max 10 documents)
-- **Selection handling**: Real-time reveal of raw syntax when editing
+See [`AGENTS.md`](AGENTS.md) for contribution guidelines and agent roles.
 
-## 📝 License
+## Troubleshooting
 
-MIT License - see [LICENSE.md](LICENSE.md)
+**Decorations not showing?**
+- Check file is `.md`, `.markdown`, or `.mdx`
+- Click 👁️ toolbar icon to toggle
+- Reload window (`Ctrl/Cmd+Shift+P` → "Reload Window")
 
-## 🤝 Contributing
+**Performance issues?**
+- Large files (>1MB) may be slower
+- Temporarily disable with 👁️ icon
+- Check `Help` → `Startup Performance`
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+**Found a bug?** Open an [issue](https://github.com/SeardnaSchmid/markdown-inline-editor-vscode/issues).
 
-### Quick Start
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## Contributing
 
-## 🐛 Issues
+Contributions welcome! Use [Conventional Commits](https://www.conventionalcommits.org/):
 
-Found a bug or have a feature request? Please open an issue on [GitHub](https://github.com/SeardnaSchmid/markdown-inline-editor-vscode/issues).
+```bash
+git checkout -b feat/my-feature
+# Make changes, write tests
+npm test && npm run lint
+git commit -m "feat(parser): add definition list support"
+```
 
-## 🙏 Acknowledgments
+**Commit types:** `feat`, `fix`, `docs`, `perf`, `test`, `refactor`
 
-Built with:
-- [remark](https://github.com/remarkjs/remark) - Markdown parser
-- [unified](https://github.com/unifiedjs/unified) - Content processing ecosystem
-- [VS Code Extension API](https://code.visualstudio.com/api)
+See [`AGENTS.md`](AGENTS.md) for agent roles and guidelines.
+
+## License
+
+MIT License – See [LICENSE.txt](LICENSE.txt)
+
+## Acknowledgments
+
+Built with [remark](https://github.com/remarkjs/remark), [unified](https://github.com/unifiedjs/unified), and the [VS Code Extension API](https://code.visualstudio.com/api).
 
 ---
 
-**Note**: This extension styles your Markdown while editing. Your files remain standard Markdown and are fully compatible with all Markdown tools, renderers, and AI assistants.
+**Your files remain standard `.md` – this extension only affects the editor view.**
+
+[ci-img]: https://github.com/SeardnaSchmid/markdown-inline-editor-vscode/actions/workflows/ci.yaml/badge.svg
+[ci]: https://github.com/SeardnaSchmid/markdown-inline-editor-vscode/actions/workflows/ci.yaml
