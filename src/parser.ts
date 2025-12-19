@@ -212,36 +212,42 @@ export class MarkdownParser {
     const level = markerLength;
     const headingType = `heading${level}` as DecorationType;
 
-    // Hide the heading marker
+    // Find whitespace after marker
+    const contentStart = start + markerLength;
+    let whitespaceLength = 0;
+    let posAfterMarker = contentStart;
+    while (posAfterMarker < end && /\s/.test(text[posAfterMarker])) {
+      whitespaceLength++;
+      posAfterMarker++;
+    }
+
+    const hideEnd = contentStart + whitespaceLength;
+
+    // Hide the marker AND the whitespace after it
     decorations.push({
       startPos: start,
-      endPos: start + markerLength,
+      endPos: hideEnd,
       type: 'hide',
     });
 
-    // Find content start (after marker and whitespace)
-    let contentStart = start + markerLength;
-    while (contentStart < end && /\s/.test(text[contentStart])) {
-      contentStart++;
-    }
-
     // Find content end (exclude trailing whitespace)
     let contentEnd = end;
-    while (contentEnd > contentStart && /\s/.test(text[contentEnd - 1])) {
+    while (contentEnd > hideEnd && /\s/.test(text[contentEnd - 1])) {
       contentEnd--;
     }
 
-    if (contentStart < contentEnd) {
+    // Style the heading content (from after marker+whitespace to end of line)
+    if (hideEnd < contentEnd) {
       // Add specific heading decoration
       decorations.push({
-        startPos: contentStart,
+        startPos: hideEnd,
         endPos: contentEnd,
         type: headingType,
       });
 
       // Also add generic heading decoration
       decorations.push({
-        startPos: contentStart,
+        startPos: hideEnd,
         endPos: contentEnd,
         type: 'heading',
       });

@@ -8,13 +8,13 @@ describe('MarkdownParser - Headings', () => {
   });
 
   describe('H1 heading (# H1)', () => {
-    it('should hide # and style as heading1', () => {
+    it('should hide # and whitespace, style as heading1', () => {
       const markdown = '# H1';
       const result = parser.extractDecorations(markdown);
       
       expect(result).toContainEqual({
         startPos: 0,
-        endPos: 1,
+        endPos: 2,
         type: 'hide'
       });
       expect(result).toContainEqual({
@@ -26,13 +26,13 @@ describe('MarkdownParser - Headings', () => {
   });
 
   describe('H2 heading (## H2)', () => {
-    it('should hide ## and style as heading2', () => {
+    it('should hide ## and whitespace, style as heading2', () => {
       const markdown = '## H2';
       const result = parser.extractDecorations(markdown);
       
       expect(result).toContainEqual({
         startPos: 0,
-        endPos: 2,
+        endPos: 3,
         type: 'hide'
       });
       expect(result).toContainEqual({
@@ -44,13 +44,13 @@ describe('MarkdownParser - Headings', () => {
   });
 
   describe('H3 heading (### H3)', () => {
-    it('should hide ### and style as heading3', () => {
+    it('should hide ### and whitespace, style as heading3', () => {
       const markdown = '### H3';
       const result = parser.extractDecorations(markdown);
       
       expect(result).toContainEqual({
         startPos: 0,
-        endPos: 3,
+        endPos: 4,
         type: 'hide'
       });
       expect(result).toContainEqual({
@@ -62,13 +62,13 @@ describe('MarkdownParser - Headings', () => {
   });
 
   describe('H4 heading (#### H4)', () => {
-    it('should hide #### and style as heading', () => {
+    it('should hide #### and whitespace, style as heading', () => {
       const markdown = '#### H4';
       const result = parser.extractDecorations(markdown);
       
       expect(result).toContainEqual({
         startPos: 0,
-        endPos: 4,
+        endPos: 5,
         type: 'hide'
       });
       expect(result).toContainEqual({
@@ -80,13 +80,13 @@ describe('MarkdownParser - Headings', () => {
   });
 
   describe('H5 heading (##### H5)', () => {
-    it('should hide ##### and style as heading', () => {
+    it('should hide ##### and whitespace, style as heading', () => {
       const markdown = '##### H5';
       const result = parser.extractDecorations(markdown);
       
       expect(result).toContainEqual({
         startPos: 0,
-        endPos: 5,
+        endPos: 6,
         type: 'hide'
       });
       expect(result).toContainEqual({
@@ -98,13 +98,13 @@ describe('MarkdownParser - Headings', () => {
   });
 
   describe('H6 heading (###### H6)', () => {
-    it('should hide ###### and style as heading', () => {
+    it('should hide ###### and whitespace, style as heading', () => {
       const markdown = '###### H6';
       const result = parser.extractDecorations(markdown);
       
       expect(result).toContainEqual({
         startPos: 0,
-        endPos: 6,
+        endPos: 7,
         type: 'hide'
       });
       expect(result).toContainEqual({
