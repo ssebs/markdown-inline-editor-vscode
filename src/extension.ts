@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Decorator } from './decorator';
+import { MarkdownLinkProvider } from './link-provider';
 
 /**
  * Activates the markdown inline preview extension.
@@ -23,6 +24,51 @@ export function activate(context: vscode.ExtensionContext) {
   const decorator = new Decorator();
   decorator.setActiveEditor(vscode.window.activeTextEditor);
 
+  // Register link provider for clickable markdown links
+  const linkProvider = new MarkdownLinkProvider();
+  const linkProviderDisposable = vscode.languages.registerDocumentLinkProvider(
+    { language: 'markdown', scheme: 'file' },
+    linkProvider
+  );
+
+  // Register command for navigating to anchor links
+  const navigateToAnchorCommand = vscode.commands.registerCommand(
+    'markdown-inline-editor.navigateToAnchor',
+    async (anchor: string, documentUri: string) => {
+      const uri = vscode.Uri.parse(documentUri);
+      const document = await vscode.workspace.openTextDocument(uri);
+      const editor = await vscode.window.showTextDocument(document);
+      
+      // Find the heading with this anchor
+      const text = document.getText();
+      const lines = text.split('\n');
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Check if this line is a heading that matches the anchor
+        const headingMatch = line.match(/^#+\s+(.+)$/);
+        if (headingMatch) {
+          const headingText = headingMatch[1].toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .trim();
+          
+          if (headingText === anchor) {
+            // Navigate to this line
+            const position = new vscode.Position(i, 0);
+            editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+            editor.selection = new vscode.Selection(position, position);
+            return;
+          }
+        }
+      }
+      
+      // If not found, show a message
+      vscode.window.showInformationMessage(`Anchor "${anchor}" not found`);
+    }
+  );
+
   const changeActiveTextEditor = vscode.window.onDidChangeActiveTextEditor(() => {
     decorator.setActiveEditor(vscode.window.activeTextEditor);
   });
@@ -40,6 +86,8 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(changeActiveTextEditor);
   context.subscriptions.push(changeTextEditorSelection);
   context.subscriptions.push(changeDocument);
+  context.subscriptions.push(linkProviderDisposable);
+  context.subscriptions.push(navigateToAnchorCommand);
   context.subscriptions.push({ dispose: () => decorator.dispose() });
 }
 

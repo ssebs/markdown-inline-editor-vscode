@@ -13,6 +13,7 @@ export interface DecorationRange {
   startPos: number;
   endPos: number;
   type: DecorationType;
+  url?: string; // URL for link decorations (for clickable links)
 }
 
 /**
@@ -557,10 +558,14 @@ export class MarkdownParser {
     // Add link decoration for text (between brackets)
     const contentStart = bracketStart + 1;
     if (contentStart < bracketEnd) {
+      // Extract URL from the link node
+      const url = node.url || '';
+      
       decorations.push({
         startPos: contentStart,
         endPos: bracketEnd,
         type: 'link',
+        url: url,
       });
     }
 
@@ -574,6 +579,7 @@ export class MarkdownParser {
     // Find and hide URL part (url)
     const parenStart = text.indexOf('(', bracketEnd);
     if (parenStart !== -1 && parenStart === bracketEnd + 1) {
+      // Hide opening parenthesis
       decorations.push({
         startPos: parenStart,
         endPos: parenStart + 1,
@@ -582,6 +588,17 @@ export class MarkdownParser {
 
       const parenEnd = text.indexOf(')', parenStart + 1);
       if (parenEnd !== -1 && parenEnd <= end) {
+        // Hide URL content between parentheses
+        const urlStart = parenStart + 1;
+        if (urlStart < parenEnd) {
+          decorations.push({
+            startPos: urlStart,
+            endPos: parenEnd,
+            type: 'hide',
+          });
+        }
+
+        // Hide closing parenthesis
         decorations.push({
           startPos: parenEnd,
           endPos: parenEnd + 1,
