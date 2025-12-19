@@ -17,9 +17,7 @@ Write Markdown like a rich text editor—see **bold**, *italic*, and `code` styl
 ## Demo
 
 <p align="center">
-  <video src="images/example-video.webm" controls width="80%">
-    Sorry, your browser doesn't support embedded videos.
-  </video>
+  <img src="images/example-video.gif" alt="Markdown Inline Editor Demo" width="80%">
 </p>
 
 <p align="center">
