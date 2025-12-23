@@ -1,4 +1,4 @@
-import { Range, TextEditor, TextDocument, TextDocumentChangeEvent } from 'vscode';
+import { Range, TextEditor, TextDocument, TextDocumentChangeEvent, workspace, Position, WorkspaceEdit, Selection } from 'vscode';
 import {
   HideDecorationType,
   BoldDecorationType,
@@ -19,6 +19,8 @@ import {
   BlockquoteDecorationType,
   ListItemDecorationType,
   HorizontalRuleDecorationType,
+  CheckboxUncheckedDecorationType,
+  CheckboxCheckedDecorationType,
 } from './decorations';
 import { MarkdownParser, DecorationRange, DecorationType } from './parser';
 
@@ -89,6 +91,8 @@ export class Decorator {
   private blockquoteDecorationType = BlockquoteDecorationType();
   private listItemDecorationType = ListItemDecorationType();
   private horizontalRuleDecorationType = HorizontalRuleDecorationType();
+  private checkboxUncheckedDecorationType = CheckboxUncheckedDecorationType();
+  private checkboxCheckedDecorationType = CheckboxCheckedDecorationType();
 
   /**
    * Sets the active text editor and immediately updates decorations.
@@ -124,7 +128,9 @@ export class Decorator {
    * This method is optimized for selection changes where the document content
    * hasn't changed. It uses cached decorations and only re-filters based on
    * the new selection.
-   * 
+   *
+   * Also handles checkbox toggle when clicking inside [ ] or [x].
+   *
    * @example
    * decorator.updateDecorationsForSelection();
    */
@@ -134,8 +140,68 @@ export class Decorator {
       return;
     }
 
+    // Check for checkbox click (single cursor, no selection)
+    // If checkbox was toggled, skip decoration update to avoid flicker
+    if (this.handleCheckboxClick()) {
+      return;
+    }
+
     // Immediate update without debounce for selection changes
     this.updateDecorationsInternal();
+  }
+
+  /**
+   * Handles checkbox toggle when user clicks inside [ ] or [x].
+   * Detects if cursor is positioned inside a checkbox and toggles it.
+   *
+   * @returns true if a checkbox was toggled, false otherwise
+   */
+  private handleCheckboxClick(): boolean {
+    if (!this.activeEditor) return false;
+
+    const selection = this.activeEditor.selection;
+
+    // Only handle single cursor clicks (no selection range)
+    if (!selection.isEmpty) return false;
+
+    const document = this.activeEditor.document;
+    const line = document.lineAt(selection.active.line);
+    const lineText = line.text;
+    const cursorChar = selection.active.character;
+
+    // Find checkbox pattern on this line: [ ] or [x] or [X]
+    const checkboxRegex = /\[([ xX])\]/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = checkboxRegex.exec(lineText)) !== null) {
+      const bracketStart = match.index;
+      const bracketEnd = match.index + 3; // [ ] is 3 chars
+
+      // Check if cursor is on or inside the checkbox [ ] range
+      // Include bracketStart because clicking the ☐ decoration lands cursor there
+      if (cursorChar >= bracketStart && cursorChar <= bracketEnd) {
+        const currentState = match[1];
+        const newState = currentState === ' ' ? 'x' : ' ';
+
+        // Toggle the checkbox
+        const edit = new WorkspaceEdit();
+        const charPosition = new Position(selection.active.line, bracketStart + 1);
+        edit.replace(
+          document.uri,
+          new Range(charPosition, charPosition.translate(0, 1)),
+          newState
+        );
+
+        workspace.applyEdit(edit);
+
+        // Move cursor after the checkbox to avoid re-triggering
+        const newCursorPos = new Position(selection.active.line, bracketEnd + 1);
+        this.activeEditor.selection = new Selection(newCursorPos, newCursorPos);
+
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -258,9 +324,9 @@ export class Decorator {
     }
     
     // Set all decoration types to empty arrays
-    for (const decorationType of this.decorationTypeMap.values()) {
-      this.activeEditor.setDecorations(decorationType, []);
-    }
+    this.decorationTypeMap.forEach((decorationType) => {
+      this.activeEditor!.setDecorations(decorationType, []);
+    });
   }
 
   /**
@@ -402,7 +468,7 @@ export class Decorator {
       // Skip decorations to show raw markdown when:
       // 1. The decoration range directly intersects with any selection (precise overlap check)
       // 2. Any line containing the decoration has a selection/cursor (permissive line-based check)
-      // 
+      //
       // Note: The line-based check is intentionally permissive - if you click anywhere on a line
       // that contains a decoration, the decoration is hidden even if your selection doesn't overlap it.
       // This provides a better UX when editing markdown.
@@ -440,6 +506,8 @@ export class Decorator {
     ['blockquote', this.blockquoteDecorationType],
     ['listItem', this.listItemDecorationType],
     ['horizontalRule', this.horizontalRuleDecorationType],
+    ['checkboxUnchecked', this.checkboxUncheckedDecorationType],
+    ['checkboxChecked', this.checkboxCheckedDecorationType],
   ]);
 
   /**
@@ -454,9 +522,9 @@ export class Decorator {
     }
 
     // Apply all decorations by iterating through the type map
-    for (const [type, decorationType] of this.decorationTypeMap.entries()) {
-      this.activeEditor.setDecorations(decorationType, filteredDecorations.get(type) || []);
-    }
+    this.decorationTypeMap.forEach((decorationType, type) => {
+      this.activeEditor!.setDecorations(decorationType, filteredDecorations.get(type) || []);
+    });
   }
 
   /**
@@ -516,12 +584,12 @@ export class Decorator {
     let lruKey: string | undefined;
     let lruAccess = Infinity;
 
-    for (const [key, entry] of this.decorationCache.entries()) {
+    this.decorationCache.forEach((entry, key) => {
       if (entry.lastAccessed < lruAccess) {
         lruAccess = entry.lastAccessed;
         lruKey = key;
       }
-    }
+    });
 
     if (lruKey) {
       this.decorationCache.delete(lruKey);
